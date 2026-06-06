@@ -309,7 +309,8 @@ export const useAppStore = defineStore('app', () => {
       checkInTime: now,
       checkOutTime: now,
       createTime: now,
-      photos: []
+      photos: [],
+      verifyRecords: []
     }
     appointments.value.unshift(newAppointment)
 

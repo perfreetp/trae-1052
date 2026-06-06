@@ -65,6 +65,18 @@
                 <el-option label="手动放行" value="manual" />
               </el-select>
             </el-form-item>
+            <el-form-item label="放行时间">
+              <el-date-picker
+                v-model="filterTimeRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                clearable
+                style="width: 300px"
+              />
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" size="small" @click="filterRecords">查询</el-button>
               <el-button size="small" @click="resetFilter">重置</el-button>
@@ -258,6 +270,7 @@ import { ref, computed, reactive } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useAppStore } from '@/stores/app'
 import type { Appointment, ReleaseRecord } from '@/types'
+import dayjs from 'dayjs'
 
 const store = useAppStore()
 
@@ -272,6 +285,7 @@ const filterPlate = ref('')
 const filterLane = ref<number | null>(null)
 const filterOperator = ref('')
 const filterType = ref('')
+const filterTimeRange = ref<string[] | null>(null)
 
 const passingList = computed(() => store.passingAppointments)
 const availableLanes = computed(() => store.gateLanes)
@@ -295,6 +309,13 @@ const filteredReleaseRecords = computed(() => {
   }
   if (filterType.value) {
     result = result.filter(r => filterType.value === 'manual' ? r.isManual : !r.isManual)
+  }
+  if (filterTimeRange.value && filterTimeRange.value.length === 2) {
+    const [startTime, endTime] = filterTimeRange.value
+    result = result.filter(r => {
+      const releaseTime = dayjs(r.releaseTime)
+      return releaseTime.isAfter(dayjs(startTime)) && releaseTime.isBefore(dayjs(endTime).add(1, 'second'))
+    })
   }
   return result
 })
@@ -377,5 +398,6 @@ function resetFilter() {
   filterLane.value = null
   filterOperator.value = ''
   filterType.value = ''
+  filterTimeRange.value = null
 }
 </script>
