@@ -13,15 +13,36 @@
     <el-row :gutter="20">
       <el-col :span="8">
         <div class="card-section">
-          <div class="section-title">待放行列表</div>
-          <el-table :data="releaseList" stripe style="width: 100%" @row-click="selectVehicle" highlight-current-row>
+          <div class="section-title">
+            待放行列表
+            <el-tag type="success" size="small" style="margin-left: 8px">{{ releaseList.length }} 辆</el-tag>
+          </div>
+          <el-table
+            :data="releaseList"
+            stripe
+            style="width: 100%"
+            @row-click="selectVehicle"
+            highlight-current-row
+            height="400"
+          >
             <el-table-column prop="queueNo" label="排队号" width="80" />
             <el-table-column prop="plateNumber" label="车牌号" width="120" />
-            <el-table-column label="状态" width="100">
-              <template #default="{ row }">
+            <el-table-column label="状态" width="90">
+              <template #default>
                 <el-tag size="small" type="success">待放行</el-tag>
               </template>
             </el-table-column>
+          </el-table>
+          <el-empty v-if="releaseList.length === 0" description="暂无待放行车辆" :image-size="80" />
+        </div>
+
+        <div class="card-section" v-if="manualReleaseRecords.length > 0">
+          <div class="section-title">手动放行记录</div>
+          <el-table :data="manualReleaseRecords" size="small" stripe>
+            <el-table-column prop="plateNumber" label="车牌号" width="110" />
+            <el-table-column prop="laneNo" label="闸道" width="60" />
+            <el-table-column prop="operator" label="值班员" width="90" />
+            <el-table-column prop="createTime" label="时间" show-overflow-tooltip />
           </el-table>
         </div>
       </el-col>
@@ -37,7 +58,7 @@
               <el-tag type="warning" size="large">{{ currentAppointment.queueNo }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="车牌号">
-              {{ currentAppointment.plateNumber }}
+              <el-tag type="primary" size="large">{{ currentAppointment.plateNumber }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="车辆类型">
               {{ currentAppointment.vehicleType }}
@@ -62,8 +83,8 @@
             <el-descriptions-item label="箱型">
               {{ currentAppointment.containerSize || '-' }}
             </el-descriptions-item>
-            <el-descriptions-item label="称重">
-              {{ currentAppointment.weight ? currentAppointment.weight + ' kg' : '-' }}
+            <el-descriptions-item label="称重结果">
+              <span style="font-weight: 600; color: #409eff">{{ currentAppointment.weight ? currentAppointment.weight + ' kg' : '-' }}</span>
             </el-descriptions-item>
             <el-descriptions-item label="危险品">
               <el-tag v-if="currentAppointment.isDangerous" type="danger">
@@ -89,7 +110,7 @@
             <el-col :span="16">
               <div class="pass-info">
                 <div class="pass-item">
-                  <span class="pass-label">入场时间：</span>
+                  <span class="pass-label">入场核验时间：</span>
                   <span class="pass-value">{{ currentAppointment.checkInTime || '未记录' }}</span>
                 </div>
                 <div class="pass-item">
@@ -97,8 +118,8 @@
                   <span class="pass-value">{{ estimatedExitTime }}</span>
                 </div>
                 <div class="pass-item">
-                  <span class="pass-label">停留时长：</span>
-                  <span class="pass-value">约 8 分钟</span>
+                  <span class="pass-label">箱单核对状态：</span>
+                  <el-tag type="success">已完成</el-tag>
                 </div>
               </div>
             </el-col>
@@ -107,7 +128,7 @@
           <div class="action-buttons">
             <el-button size="large" type="info" @click="returnInfo">
               <el-icon><RefreshLeft /></el-icon>
-              退回资料
+              退回箱单重核
             </el-button>
             <el-button size="large" type="primary" @click="printTicket">
               <el-icon><Printer /></el-icon>
@@ -120,22 +141,29 @@
           </div>
         </div>
 
-        <el-empty v-else description="请选择待放行车辆" :image-size="120" />
+        <el-empty v-else description="请从左侧列表选择待放行车辆" :image-size="120" style="margin-top: 100px">
+          <template #description>
+            <p style="font-size: 16px; color: #909399">仅显示已完成箱单核对的车辆</p>
+          </template>
+        </el-empty>
       </el-col>
     </el-row>
 
-    <el-dialog v-model="manualReleaseDialog" title="手动放行" width="500px">
+    <el-dialog v-model="manualReleaseDialog" title="手动放行" width="550px">
       <el-form :model="manualForm" label-width="100px">
-        <el-form-item label="车牌号">
+        <el-form-item label="车牌号" required>
           <el-input v-model="manualForm.plateNumber" placeholder="请输入车牌号" />
         </el-form-item>
-        <el-form-item label="放行原因">
-          <el-input v-model="manualForm.reason" type="textarea" :rows="3" placeholder="请输入放行原因" />
+        <el-form-item label="放行原因" required>
+          <el-input v-model="manualForm.reason" type="textarea" :rows="3" placeholder="请输入手动放行原因（必填）" />
         </el-form-item>
-        <el-form-item label="闸道选择">
+        <el-form-item label="闸道选择" required>
           <el-select v-model="manualForm.laneNo" placeholder="选择闸道" style="width: 100%">
             <el-option v-for="lane in availableLanes" :key="lane.id" :label="lane.name" :value="lane.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="值班员">
+          <el-tag>{{ currentUser.name }}</el-tag>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -156,10 +184,10 @@
           <p>集装箱号：{{ ticketInfo.containerNo }}</p>
           <p>放行闸道：{{ ticketInfo.laneNo }}号闸道</p>
           <p>放行时间：{{ ticketInfo.releaseTime }}</p>
+          <p>值班员：{{ ticketInfo.operator }}</p>
         </div>
         <el-divider />
         <div class="ticket-footer">
-          <p>值班员：{{ currentUser.name }}</p>
           <p style="text-align: right">打印时间：{{ ticketInfo.printTime }}</p>
         </div>
       </div>
@@ -203,12 +231,15 @@ const ticketInfo = reactive({
   containerNo: '',
   laneNo: 1,
   releaseTime: '',
+  operator: '',
   printTime: ''
 })
 
-const releaseList = computed(() =>
-  store.appointments.filter(a => a.status === 'passing' || a.status === 'checking')
-)
+const releaseList = computed(() => {
+  return store.passingAppointments
+})
+
+const manualReleaseRecords = computed(() => store.manualReleaseRecords)
 
 const currentAppointment = computed<Appointment | undefined>(() =>
   selectedId.value ? store.getAppointmentById(selectedId.value) : undefined
@@ -231,25 +262,37 @@ function selectVehicle(row: Appointment) {
 
 function openGate() {
   if (!currentAppointment.value) return
-  gateStatus.value = 'open'
-  ElMessage.success('闸道已开启，请车辆通行')
 
-  setTimeout(() => {
-    store.releaseVehicle(currentAppointment.value!.id)
-    ElMessage.success(`车辆 ${currentAppointment.value!.plateNumber} 已放行`)
-    gateStatus.value = 'closed'
-    selectedId.value = null
-  }, 2000)
+  ElMessageBox.confirm(
+    `确认开闸放行车辆 ${currentAppointment.value.plateNumber}？`,
+    '放行确认',
+    {
+      confirmButtonText: '确认放行',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    gateStatus.value = 'open'
+    ElMessage.success('闸道已开启，请车辆通行')
+
+    setTimeout(() => {
+      store.releaseVehicle(currentAppointment.value!.id)
+      ElMessage.success(`车辆 ${currentAppointment.value!.plateNumber} 已成功放行`)
+      gateStatus.value = 'closed'
+      selectedId.value = null
+    }, 2000)
+  }).catch(() => {})
 }
 
 function returnInfo() {
   if (!currentAppointment.value) return
-  ElMessageBox.confirm('确定要退回资料重新核验吗？', '提示', {
-    confirmButtonText: '确定',
+
+  ElMessageBox.confirm('确定要退回资料重新进行箱单核对吗？', '退回确认', {
+    confirmButtonText: '确定退回',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    store.updateAppointment(currentAppointment.value!.id, { status: 'checking' })
+    store.returnToCheck(currentAppointment.value!.id)
     ElMessage.success('已退回箱单核对环节')
     selectedId.value = null
   }).catch(() => {})
@@ -264,6 +307,7 @@ function printTicket() {
   ticketInfo.containerNo = currentAppointment.value.containerNo || '-'
   ticketInfo.laneNo = currentLane.value
   ticketInfo.releaseTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
+  ticketInfo.operator = currentUser.value.name
   ticketInfo.printTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
   ticketDialog.value = true
 }
@@ -277,14 +321,35 @@ async function doPrint() {
 }
 
 function confirmManualRelease() {
-  if (!manualForm.plateNumber || !manualForm.reason) {
-    ElMessage.warning('请填写完整信息')
+  if (!manualForm.plateNumber.trim()) {
+    ElMessage.warning('请输入车牌号')
     return
   }
-  ElMessage.success(`车辆 ${manualForm.plateNumber} 已手动放行`)
-  manualReleaseDialog.value = false
-  manualForm.plateNumber = ''
-  manualForm.reason = ''
+  if (!manualForm.reason.trim()) {
+    ElMessage.warning('请输入放行原因')
+    return
+  }
+  if (!manualForm.laneNo) {
+    ElMessage.warning('请选择闸道')
+    return
+  }
+
+  ElMessageBox.confirm(
+    `确认手动放行车辆 ${manualForm.plateNumber}？此操作将被记录并可追溯。`,
+    '手动放行确认',
+    {
+      confirmButtonText: '确认放行',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    store.manualRelease(manualForm.plateNumber, manualForm.reason, manualForm.laneNo)
+    ElMessage.success(`车辆 ${manualForm.plateNumber} 已手动放行，记录已保存`)
+    manualReleaseDialog.value = false
+    manualForm.plateNumber = ''
+    manualForm.reason = ''
+    manualForm.laneNo = 1
+  }).catch(() => {})
 }
 </script>
 
@@ -321,10 +386,11 @@ function confirmManualRelease() {
   background: #f5f7fa;
   border-radius: 8px;
   padding: 20px;
+  height: 100%;
 }
 
 .pass-item {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   font-size: 14px;
 }
 
@@ -334,6 +400,8 @@ function confirmManualRelease() {
 
 .pass-label {
   color: #909399;
+  display: inline-block;
+  width: 110px;
 }
 
 .pass-value {
@@ -344,7 +412,7 @@ function confirmManualRelease() {
 .action-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 16px;
   margin-top: 30px;
 }
 

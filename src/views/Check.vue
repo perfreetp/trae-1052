@@ -2,13 +2,28 @@
   <div class="page-container">
     <div class="page-header">
       <div class="page-title">箱单核对</div>
+      <div class="header-actions">
+        <el-tag v-if="currentAppointment" type="warning">
+          当前处理：{{ currentAppointment.plateNumber }}
+        </el-tag>
+      </div>
     </div>
 
     <el-row :gutter="20">
       <el-col :span="8">
         <div class="card-section">
-          <div class="section-title">待核对列表</div>
-          <el-table :data="checkingList" stripe style="width: 100%" @row-click="selectVehicle" highlight-current-row>
+          <div class="section-title">
+            待核对列表
+            <el-tag type="success" size="small" style="margin-left: 8px">{{ checkingList.length }} 辆</el-tag>
+          </div>
+          <el-table
+            :data="checkingList"
+            stripe
+            style="width: 100%"
+            @row-click="selectVehicle"
+            highlight-current-row
+            height="500"
+          >
             <el-table-column prop="queueNo" label="排队号" width="80" />
             <el-table-column prop="plateNumber" label="车牌号" width="120" />
             <el-table-column prop="businessType" label="业务" width="70">
@@ -19,6 +34,7 @@
               </template>
             </el-table-column>
           </el-table>
+          <el-empty v-if="checkingList.length === 0" description="暂无待核对车辆" :image-size="80" />
         </div>
       </el-col>
 
@@ -47,7 +63,7 @@
           <div class="section-title" style="margin-top: 0">系统箱单信息</div>
           <el-descriptions :column="2" border>
             <el-descriptions-item label="集装箱号">
-              <span :class="matched ? 'text-success' : 'text-danger'">
+              <span :class="matched ? 'text-success' : 'text-danger'" style="font-weight: 600">
                 {{ systemContainerInfo.containerNo }}
               </span>
               <el-icon v-if="matched" color="#67c23a"><CircleCheck /></el-icon>
@@ -98,8 +114,8 @@
             </el-form-item>
             <el-form-item label="箱体检查">
               <el-checkbox v-model="containerCheck.undamaged">箱体完好</el-checkbox>
-              <el-checkbox v-model="containerCheck.clean">箱内清洁</el-checkbox>
-              <el-checkbox v-model="containerCheck.sealed">铅封完好</el-checkbox>
+              <el-checkbox v-model="containerCheck.clean" style="margin-left: 20px">箱内清洁</el-checkbox>
+              <el-checkbox v-model="containerCheck.sealed" style="margin-left: 20px">铅封完好</el-checkbox>
             </el-form-item>
           </el-form>
 
@@ -113,14 +129,26 @@
           </div>
 
           <div class="action-buttons">
-            <el-button size="large" @click="backToVerify">退回重验</el-button>
-            <el-button type="success" size="large" :disabled="!canComplete" @click="completeCheck">
+            <el-button size="large" type="info" @click="backToVerify">
+              <el-icon><RefreshLeft /></el-icon>
+              退回证件核验
+            </el-button>
+            <el-button size="large" type="danger" @click="rejectCheck">
+              <el-icon><Close /></el-icon>
+              箱单不符，拒绝
+            </el-button>
+            <el-button size="large" type="success" :disabled="!canComplete" @click="completeCheck">
+              <el-icon><Check /></el-icon>
               确认无误，进入放行
             </el-button>
           </div>
         </div>
 
-        <el-empty v-else description="请选择待核对车辆" :image-size="120" />
+        <el-empty v-else description="请从左侧列表选择待核对车辆" :image-size="120" style="margin-top: 100px">
+          <template #description>
+            <p style="font-size: 16px; color: #909399">仅显示已通过证件核验的车辆</p>
+          </template>
+        </el-empty>
       </el-col>
     </el-row>
   </div>
@@ -128,7 +156,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAppStore } from '@/stores/app'
 import type { Appointment } from '@/types'
 
@@ -158,9 +186,9 @@ const systemContainerInfo = reactive({
   destination: '北京朝阳'
 })
 
-const checkingList = computed(() =>
-  store.appointments.filter(a => a.status === 'verifying' || a.status === 'checking')
-)
+const checkingList = computed(() => {
+  return store.checkingAppointments
+})
 
 const currentAppointment = computed<Appointment | undefined>(() =>
   selectedId.value ? store.getAppointmentById(selectedId.value) : undefined
@@ -198,10 +226,13 @@ watch(currentAppointment, (val) => {
     if (val.weight) {
       weightForm.weight = val.weight
     }
+    weightRecorded.value = false
+    matchResult.value = null
+    sealNo.value = ''
+    containerCheck.undamaged = true
+    containerCheck.clean = true
+    containerCheck.sealed = true
   }
-  weightRecorded.value = false
-  matchResult.value = null
-  sealNo.value = ''
 })
 
 function selectVehicle(row: Appointment) {
@@ -234,9 +265,36 @@ function completeCheck() {
 
 function backToVerify() {
   if (!currentAppointment.value) return
-  store.updateAppointment(currentAppointment.value.id, { status: 'verifying' })
-  ElMessage.info('已退回证件核验环节')
-  selectedId.value = null
+
+  ElMessageBox.confirm('确定要退回证件核验环节吗？', '退回确认', {
+    confirmButtonText: '确定退回',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    store.returnToVerify(currentAppointment.value!.id)
+    ElMessage.success('已退回证件核验环节')
+    selectedId.value = null
+  }).catch(() => {})
+}
+
+async function rejectCheck() {
+  if (!currentAppointment.value) return
+  try {
+    const { value } = await ElMessageBox.prompt('请输入箱单不符的原因', '拒绝确认', {
+      confirmButtonText: '确定拒绝',
+      cancelButtonText: '取消',
+      inputPlaceholder: '请输入箱单不符的原因',
+      inputValidator: (v) => {
+        if (!v || v.trim().length === 0) return '请输入原因'
+        return true
+      }
+    })
+    store.rejectAtCheck(currentAppointment.value.id, value)
+    ElMessage.success('已记录拒绝原因，车辆已退回')
+    selectedId.value = null
+  } catch {
+    // cancelled
+  }
 }
 </script>
 

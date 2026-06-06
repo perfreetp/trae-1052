@@ -64,3 +64,25 @@ export interface FleetEvaluation {
   score: number
   level: 'A' | 'B' | 'C' | 'D'
 }
+
+export interface ExceptionRecord {
+  id: string
+  appointmentNo: string
+  plateNumber: string
+  type: 'absent' | 'late' | 'document_mismatch' | 'container_mismatch' | 'equipment_fault' | 'other'
+  description: string
+  action: string
+  handler: string
+  createTime: string
+  processed: boolean
+  processedTime?: string
+}
+
+export interface ManualReleaseRecord {
+  id: string
+  plateNumber: string
+  reason: string
+  laneNo: number
+  operator: string
+  createTime: string
+}
