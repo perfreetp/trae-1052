@@ -13,25 +13,25 @@
     <el-row :gutter="20">
       <el-col :span="6">
         <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
-          <div class="stat-value">{{ store.absentCount }}</div>
+          <div class="stat-value">{{ store.exceptionAbsentCount }}</div>
           <div class="stat-label">爽约车辆</div>
         </div>
       </el-col>
       <el-col :span="6">
         <div class="stat-card" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)">
-          <div class="stat-value">{{ store.lateCount }}</div>
+          <div class="stat-value">{{ store.exceptionLateCount }}</div>
           <div class="stat-label">迟到车辆</div>
         </div>
       </el-col>
       <el-col :span="6">
         <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
-          <div class="stat-value">{{ store.rejectedCount }}</div>
+          <div class="stat-value">{{ store.exceptionRejectedCount }}</div>
           <div class="stat-label">拒绝放行</div>
         </div>
       </el-col>
       <el-col :span="6">
         <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
-          <div class="stat-value">{{ exceptionRecords.length }}</div>
+          <div class="stat-value">{{ store.exceptionTotalCount }}</div>
           <div class="stat-label">异常总数</div>
         </div>
       </el-col>

@@ -38,7 +38,8 @@ export const mockAppointments: Appointment[] = [
     status: 'pending',
     isDangerous: false,
     createTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-    photos: []
+    photos: [],
+    verifyRecords: []
   },
   {
     id: generateId(),
@@ -57,7 +58,8 @@ export const mockAppointments: Appointment[] = [
     queueNo: generateQueueNo(),
     isDangerous: false,
     createTime: dayjs().subtract(10, 'minute').format('YYYY-MM-DD HH:mm:ss'),
-    photos: []
+    photos: [],
+    verifyRecords: []
   },
   {
     id: generateId(),
@@ -77,7 +79,8 @@ export const mockAppointments: Appointment[] = [
     isDangerous: true,
     dangerousInfo: '3类易燃液体',
     createTime: dayjs().subtract(20, 'minute').format('YYYY-MM-DD HH:mm:ss'),
-    photos: []
+    photos: [],
+    verifyRecords: []
   },
   {
     id: generateId(),
@@ -97,7 +100,8 @@ export const mockAppointments: Appointment[] = [
     isDangerous: false,
     weight: 28500,
     createTime: dayjs().subtract(30, 'minute').format('YYYY-MM-DD HH:mm:ss'),
-    photos: []
+    photos: [],
+    verifyRecords: []
   },
   {
     id: generateId(),
@@ -117,7 +121,8 @@ export const mockAppointments: Appointment[] = [
     checkInTime: dayjs().subtract(45, 'minute').format('YYYY-MM-DD HH:mm:ss'),
     checkOutTime: dayjs().subtract(20, 'minute').format('YYYY-MM-DD HH:mm:ss'),
     createTime: dayjs().subtract(2, 'hour').format('YYYY-MM-DD HH:mm:ss'),
-    photos: []
+    photos: [],
+    verifyRecords: []
   },
   {
     id: generateId(),
@@ -138,7 +143,8 @@ export const mockAppointments: Appointment[] = [
     weight: 26800,
     checkInTime: dayjs().subtract(10, 'minute').format('YYYY-MM-DD HH:mm:ss'),
     createTime: dayjs().subtract(1, 'hour').format('YYYY-MM-DD HH:mm:ss'),
-    photos: []
+    photos: [],
+    verifyRecords: []
   },
   {
     id: generateId(),
@@ -157,6 +163,7 @@ export const mockAppointments: Appointment[] = [
     isDangerous: false,
     createTime: dayjs().subtract(3, 'hour').format('YYYY-MM-DD HH:mm:ss'),
     photos: [],
+    verifyRecords: [],
     remark: '未按时到场'
   }
 ]
@@ -218,6 +225,59 @@ export const mockManualReleaseRecords: ManualReleaseRecord[] = [
   }
 ]
 
+export const mockReleaseRecords: ReleaseRecord[] = [
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '辽M88990',
+    laneNo: 2,
+    operator: '张值班员',
+    releaseTime: dayjs().subtract(10, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+    isManual: false,
+    weight: 26800,
+    driverName: '郑十',
+    fleetName: '中远海运'
+  },
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '苏E98765',
+    laneNo: 1,
+    operator: '张值班员',
+    releaseTime: dayjs().subtract(20, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+    isManual: false,
+    weight: 15200,
+    driverName: '钱七',
+    fleetName: '顺丰物流'
+  },
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '皖J77889',
+    laneNo: 3,
+    operator: '张值班员',
+    releaseTime: dayjs().subtract(30, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+    isManual: true,
+    reason: '紧急物资运输，已获得港务部门特批，优先放行',
+    weight: 0,
+    driverName: '手动放行',
+    fleetName: '手动放行'
+  },
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '冀K66554',
+    laneNo: 1,
+    operator: '李值班员',
+    releaseTime: dayjs().subtract(2, 'hour').format('YYYY-MM-DD HH:mm:ss'),
+    isManual: true,
+    reason: '系统故障导致排队信息丢失，根据纸质预约单人工核实后放行',
+    weight: 0,
+    driverName: '手动放行',
+    fleetName: '手动放行'
+  }
+]
+
 export const mockQueue: QueueItem[] = [
   {
     id: generateId(),
@@ -274,6 +334,42 @@ export const mockShiftStats: ShiftStats[] = [
     avgWaitTime: 12,
     avgProcessTime: 8,
     dangerousCount: 4
+  },
+  {
+    date: dayjs().format('YYYY-MM-DD'),
+    shift: 'night',
+    totalAppointments: 52,
+    passedCount: 45,
+    rejectedCount: 3,
+    absentCount: 3,
+    lateCount: 1,
+    avgWaitTime: 8,
+    avgProcessTime: 6,
+    dangerousCount: 2
+  },
+  {
+    date: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
+    shift: 'day',
+    totalAppointments: 92,
+    passedCount: 78,
+    rejectedCount: 6,
+    absentCount: 5,
+    lateCount: 3,
+    avgWaitTime: 15,
+    avgProcessTime: 10,
+    dangerousCount: 5
+  },
+  {
+    date: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
+    shift: 'night',
+    totalAppointments: 48,
+    passedCount: 42,
+    rejectedCount: 2,
+    absentCount: 2,
+    lateCount: 2,
+    avgWaitTime: 6,
+    avgProcessTime: 5,
+    dangerousCount: 1
   }
 ]
 

@@ -3,54 +3,99 @@
     <div class="page-header">
       <div class="page-title">闸道放行</div>
       <div class="header-actions">
-        <el-button type="warning" @click="manualReleaseDialog = true">
-          <el-icon><Key /></el-icon>
+        <el-tag v-if="passingList.length > 0" type="warning" size="large">
+          待放行：{{ passingList.length }} 辆
+        </el-tag>
+        <el-button type="primary" @click="manualReleaseDialog = true">
+          <el-icon><Hand /></el-icon>
           手动放行
         </el-button>
       </div>
     </div>
 
     <el-row :gutter="20">
-      <el-col :span="8">
+      <el-col :span="9">
         <div class="card-section">
-          <div class="section-title">
-            待放行列表
-            <el-tag type="success" size="small" style="margin-left: 8px">{{ releaseList.length }} 辆</el-tag>
-          </div>
+          <div class="section-title">待放行车辆列表</div>
           <el-table
-            :data="releaseList"
+            :data="passingList"
             stripe
             style="width: 100%"
             @row-click="selectVehicle"
             highlight-current-row
-            height="400"
+            height="280"
           >
-            <el-table-column prop="queueNo" label="排队号" width="80" />
+            <el-table-column prop="queueNo" label="排队号" width="90" />
             <el-table-column prop="plateNumber" label="车牌号" width="120" />
-            <el-table-column label="状态" width="90">
-              <template #default>
+            <el-table-column prop="driverName" label="司机" width="100" />
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
                 <el-tag size="small" type="success">待放行</el-tag>
               </template>
             </el-table-column>
           </el-table>
-          <el-empty v-if="releaseList.length === 0" description="暂无待放行车辆" :image-size="80" />
+          <el-empty v-if="passingList.length === 0" description="暂无待放行车辆" :image-size="80" />
+          <div class="tip-text">仅显示已完成箱单核对的车辆</div>
         </div>
 
-        <div class="card-section" v-if="manualReleaseRecords.length > 0">
-          <div class="section-title">手动放行记录</div>
-          <el-table :data="manualReleaseRecords" size="small" stripe border height="200">
-            <el-table-column prop="createTime" label="操作时间" width="160" />
+        <div class="card-section" style="margin-top: 20px">
+          <div class="section-title">放行台账查询</div>
+          <el-form :inline="true" size="small" style="margin-bottom: 12px">
+            <el-form-item label="车牌号">
+              <el-input v-model="filterPlate" placeholder="请输入" clearable style="width: 120px" />
+            </el-form-item>
+            <el-form-item label="闸道">
+              <el-select v-model="filterLane" placeholder="全部" clearable style="width: 90px">
+                <el-option label="1号" :value="1" />
+                <el-option label="2号" :value="2" />
+                <el-option label="3号" :value="3" />
+                <el-option label="4号" :value="4" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="值班员">
+              <el-select v-model="filterOperator" placeholder="全部" clearable style="width: 100px">
+                <el-option label="张值班员" value="张值班员" />
+                <el-option label="李值班员" value="李值班员" />
+                <el-option label="王值班员" value="王值班员" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="类型">
+              <el-select v-model="filterType" placeholder="全部" clearable style="width: 100px">
+                <el-option label="正常放行" value="normal" />
+                <el-option label="手动放行" value="manual" />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" size="small" @click="filterRecords">查询</el-button>
+              <el-button size="small" @click="resetFilter">重置</el-button>
+            </el-form-item>
+          </el-form>
+
+          <el-table :data="filteredReleaseRecords" stripe border height="260" size="small">
+            <el-table-column prop="releaseTime" label="放行时间" width="160" fixed="left" />
             <el-table-column prop="plateNumber" label="车牌号" width="100" />
-            <el-table-column prop="reason" label="放行原因" min-width="150" show-overflow-tooltip />
+            <el-table-column label="类型" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.isManual ? 'danger' : 'success'" size="small">
+                  {{ row.isManual ? '手动' : '正常' }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column prop="laneNo" label="闸道" width="60">
               <template #default="{ row }">{{ row.laneNo }}号</template>
             </el-table-column>
             <el-table-column prop="operator" label="值班员" width="90" />
+            <el-table-column prop="appointmentNo" label="预约号" width="150" show-overflow-tooltip />
+            <el-table-column label="操作" width="80" fixed="right">
+              <template #default="{ row }">
+                <el-button type="primary" link size="small" @click="viewReleaseDetail(row)">详情</el-button>
+              </template>
+            </el-table-column>
           </el-table>
         </div>
       </el-col>
 
-      <el-col :span="16">
+      <el-col :span="15">
         <div v-if="currentAppointment" class="card-section">
           <div class="section-title">车辆通行信息</div>
           <el-descriptions :column="2" border>
@@ -58,115 +103,104 @@
               {{ currentAppointment.appointmentNo }}
             </el-descriptions-item>
             <el-descriptions-item label="排队号">
-              <el-tag type="warning" size="large">{{ currentAppointment.queueNo }}</el-tag>
+              <el-tag type="primary" size="large">{{ currentAppointment.queueNo }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="车牌号">
               <el-tag type="primary" size="large">{{ currentAppointment.plateNumber }}</el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="车辆类型">
-              {{ currentAppointment.vehicleType }}
-            </el-descriptions-item>
-            <el-descriptions-item label="司机">
+            <el-descriptions-item label="司机姓名">
               {{ currentAppointment.driverName }}
-            </el-descriptions-item>
-            <el-descriptions-item label="联系电话">
-              {{ currentAppointment.driverPhone }}
             </el-descriptions-item>
             <el-descriptions-item label="所属车队">
               {{ currentAppointment.fleetName }}
+            </el-descriptions-item>
+            <el-descriptions-item label="车辆类型">
+              {{ currentAppointment.vehicleType }}
             </el-descriptions-item>
             <el-descriptions-item label="业务类型">
               <el-tag :type="currentAppointment.businessType === 'import' ? 'primary' : 'success'">
                 {{ currentAppointment.businessType === 'import' ? '进口提箱' : currentAppointment.businessType === 'export' ? '出口还箱' : '中转' }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="集装箱号">
+            <el-descriptions-item label="箱号">
               {{ currentAppointment.containerNo || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="箱型">
               {{ currentAppointment.containerSize || '-' }}
             </el-descriptions-item>
             <el-descriptions-item label="称重结果">
-              <span style="font-weight: 600; color: #409eff">{{ currentAppointment.weight ? currentAppointment.weight + ' kg' : '-' }}</span>
+              <span style="font-weight: 600; color: #409eff">{{ currentAppointment.weight || 0 }} kg</span>
             </el-descriptions-item>
             <el-descriptions-item label="危险品">
-              <el-tag v-if="currentAppointment.isDangerous" type="danger">
-                是 - {{ currentAppointment.dangerousInfo }}
+              <el-tag :type="currentAppointment.isDangerous ? 'danger' : 'info'" size="small">
+                {{ currentAppointment.isDangerous ? '是' : '否' }}
               </el-tag>
-              <span v-else>否</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="入闸时间">
+              {{ currentAppointment.checkInTime || '-' }}
             </el-descriptions-item>
           </el-descriptions>
 
           <el-divider />
 
-          <div class="section-title" style="margin-top: 0">闸道状态</div>
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <div class="gate-status-card" :class="gateStatus">
-                <el-icon :size="48"><Van /></el-icon>
-                <div class="gate-status-text">
-                  {{ gateStatus === 'open' ? '闸道已开启' : '闸道关闭' }}
+          <div class="section-title" style="margin-top: 0">放行操作</div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <div class="verify-card">
+                <div class="verify-card-title">放行信息确认</div>
+                <div class="verify-card-content">
+                  <div class="info-row">
+                    <span class="info-label">通行闸道：</span>
+                    <el-select v-model="selectedLane" placeholder="选择闸道" style="width: 150px">
+                      <el-option v-for="lane in availableLanes" :key="lane.id" :label="lane.name" :value="lane.id" :disabled="lane.status === 'maintenance'" />
+                    </el-select>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">当前状态：</span>
+                    <span style="color: #67c23a">箱单核对完成，等待放行</span>
+                  </div>
                 </div>
-                <div class="gate-lane">{{ currentLane }}号闸道</div>
               </div>
             </el-col>
-            <el-col :span="16">
-              <div class="pass-info">
-                <div class="pass-item">
-                  <span class="pass-label">入场核验时间：</span>
-                  <span class="pass-value">{{ currentAppointment.checkInTime || '未记录' }}</span>
-                </div>
-                <div class="pass-item">
-                  <span class="pass-label">预计出场时间：</span>
-                  <span class="pass-value">{{ estimatedExitTime }}</span>
-                </div>
-                <div class="pass-item">
-                  <span class="pass-label">箱单核对状态：</span>
-                  <el-tag type="success">已完成</el-tag>
+            <el-col :span="12">
+              <div class="verify-card">
+                <div class="verify-card-title">操作</div>
+                <div class="verify-card-content" style="gap: 12px">
+                  <el-button type="success" size="large" @click="confirmRelease" :disabled="!selectedLane" style="width: 100%">
+                    <el-icon><Check /></el-icon>
+                    确认开闸放行
+                  </el-button>
+                  <el-button type="warning" size="large" @click="returnToCheck" style="width: 100%">
+                    <el-icon><Back /></el-icon>
+                    退回箱单核对
+                  </el-button>
                 </div>
               </div>
             </el-col>
           </el-row>
-
-          <div class="action-buttons">
-            <el-button size="large" type="info" @click="returnInfo">
-              <el-icon><RefreshLeft /></el-icon>
-              退回箱单重核
-            </el-button>
-            <el-button size="large" type="primary" @click="printTicket">
-              <el-icon><Printer /></el-icon>
-              打印通行凭证
-            </el-button>
-            <el-button size="large" type="success" @click="openGate">
-              <el-icon><Right /></el-icon>
-              开闸放行
-            </el-button>
-          </div>
         </div>
 
-        <el-empty v-else description="请从左侧列表选择待放行车辆" :image-size="120" style="margin-top: 100px">
-          <template #description>
-            <p style="font-size: 16px; color: #909399">仅显示已完成箱单核对的车辆</p>
-          </template>
-        </el-empty>
+        <div v-else class="card-section" style="min-height: 400px; display: flex; align-items: center; justify-content: center">
+          <el-empty description="点击左侧列表中的车辆开始放行操作" :image-size="100" />
+        </div>
       </el-col>
     </el-row>
 
-    <el-dialog v-model="manualReleaseDialog" title="手动放行" width="550px">
-      <el-form :model="manualForm" label-width="100px">
-        <el-form-item label="车牌号" required>
-          <el-input v-model="manualForm.plateNumber" placeholder="请输入车牌号" />
+    <el-dialog v-model="manualReleaseDialog" title="手动放行" width="500px">
+      <el-form :model="manualReleaseForm" label-width="100px" :rules="manualReleaseRules" ref="manualReleaseFormRef">
+        <el-form-item label="车牌号" prop="plateNumber">
+          <el-input v-model="manualReleaseForm.plateNumber" placeholder="请输入车牌号" />
         </el-form-item>
-        <el-form-item label="放行原因" required>
-          <el-input v-model="manualForm.reason" type="textarea" :rows="3" placeholder="请输入手动放行原因（必填）" />
+        <el-form-item label="放行原因" prop="reason">
+          <el-input v-model="manualReleaseForm.reason" type="textarea" :rows="3" placeholder="请输入手动放行原因（必填）" />
         </el-form-item>
-        <el-form-item label="闸道选择" required>
-          <el-select v-model="manualForm.laneNo" placeholder="选择闸道" style="width: 100%">
-            <el-option v-for="lane in availableLanes" :key="lane.id" :label="lane.name" :value="lane.id" />
+        <el-form-item label="闸道选择" prop="laneNo">
+          <el-select v-model="manualReleaseForm.laneNo" placeholder="选择闸道" style="width: 100%">
+            <el-option v-for="lane in availableLanes" :key="lane.id" :label="lane.name" :value="lane.id" :disabled="lane.status === 'maintenance'" />
           </el-select>
         </el-form-item>
         <el-form-item label="值班员">
-          <el-tag>{{ currentUser.name }}</el-tag>
+          <el-tag type="info">{{ store.currentUser.name }}</el-tag>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -175,31 +209,45 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="ticketDialog" title="通行凭证预览" width="400px">
-      <div class="ticket-preview">
-        <div class="ticket-title">港口车辆通行凭证</div>
-        <div class="ticket-no">凭证号：{{ ticketInfo.no }}</div>
-        <el-divider />
-        <div class="ticket-info">
-          <p>车牌号：{{ ticketInfo.plateNumber }}</p>
-          <p>司机：{{ ticketInfo.driverName }}</p>
-          <p>业务类型：{{ ticketInfo.businessType }}</p>
-          <p>集装箱号：{{ ticketInfo.containerNo }}</p>
-          <p>放行闸道：{{ ticketInfo.laneNo }}号闸道</p>
-          <p>放行时间：{{ ticketInfo.releaseTime }}</p>
-          <p>值班员：{{ ticketInfo.operator }}</p>
-        </div>
-        <el-divider />
-        <div class="ticket-footer">
-          <p style="text-align: right">打印时间：{{ ticketInfo.printTime }}</p>
-        </div>
-      </div>
+    <el-dialog v-model="detailDialog" title="放行记录详情" width="550px">
+      <el-descriptions v-if="currentRelease" :column="1" border size="default">
+        <el-descriptions-item label="放行时间">
+          {{ currentRelease.releaseTime }}
+        </el-descriptions-item>
+        <el-descriptions-item label="车牌号">
+          <el-tag type="primary">{{ currentRelease.plateNumber }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="预约号">
+          {{ currentRelease.appointmentNo || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="放行类型">
+          <el-tag :type="currentRelease.isManual ? 'danger' : 'success'">
+            {{ currentRelease.isManual ? '手动放行' : '正常放行' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="通行闸道">
+          {{ currentRelease.laneNo }}号闸道
+        </el-descriptions-item>
+        <el-descriptions-item label="放行原因">
+          <div style="white-space: pre-wrap; color: #606266">
+            {{ currentRelease.reason || (currentRelease.isManual ? '无' : '正常流程放行') }}
+          </div>
+        </el-descriptions-item>
+        <el-descriptions-item label="称重结果">
+          {{ currentRelease.weight ? currentRelease.weight + ' kg' : '无' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="司机">
+          {{ currentRelease.driverName || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="所属车队">
+          {{ currentRelease.fleetName || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="值班员">
+          {{ currentRelease.operator }}
+        </el-descriptions-item>
+      </el-descriptions>
       <template #footer>
-        <el-button @click="ticketDialog = false">关闭</el-button>
-        <el-button type="primary" @click="doPrint">
-          <el-icon><Printer /></el-icon>
-          打印
-        </el-button>
+        <el-button @click="detailDialog = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -207,245 +255,127 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { useAppStore } from '@/stores/app'
-import type { Appointment } from '@/types'
-import dayjs from 'dayjs'
+import type { Appointment, ReleaseRecord } from '@/types'
 
 const store = useAppStore()
 
-const selectedId = ref<string | null>(null)
-const gateStatus = ref<'open' | 'closed'>('closed')
-const currentLane = ref(1)
+const selectedId = ref('')
+const selectedLane = ref<number | null>(null)
 const manualReleaseDialog = ref(false)
-const ticketDialog = ref(false)
+const detailDialog = ref(false)
+const currentRelease = ref<ReleaseRecord | null>(null)
+const manualReleaseFormRef = ref<FormInstance>()
 
-const manualForm = reactive({
-  plateNumber: '',
-  reason: '',
-  laneNo: 1
-})
+const filterPlate = ref('')
+const filterLane = ref<number | null>(null)
+const filterOperator = ref('')
+const filterType = ref('')
 
-const ticketInfo = reactive({
-  no: '',
-  plateNumber: '',
-  driverName: '',
-  businessType: '',
-  containerNo: '',
-  laneNo: 1,
-  releaseTime: '',
-  operator: '',
-  printTime: ''
-})
-
-const releaseList = computed(() => {
-  return store.passingAppointments
-})
-
-const manualReleaseRecords = computed(() => store.manualReleaseRecords)
+const passingList = computed(() => store.passingAppointments)
+const availableLanes = computed(() => store.gateLanes)
 
 const currentAppointment = computed<Appointment | undefined>(() =>
   selectedId.value ? store.getAppointmentById(selectedId.value) : undefined
 )
 
-const availableLanes = computed(() =>
-  store.gateLanes.filter(l => l.status !== 'maintenance')
-)
+const releaseRecords = computed(() => store.releaseRecords)
 
-const currentUser = computed(() => store.currentUser)
+const filteredReleaseRecords = computed(() => {
+  let result = [...releaseRecords.value]
+  if (filterPlate.value) {
+    result = result.filter(r => r.plateNumber.includes(filterPlate.value))
+  }
+  if (filterLane.value !== null) {
+    result = result.filter(r => r.laneNo === filterLane.value)
+  }
+  if (filterOperator.value) {
+    result = result.filter(r => r.operator === filterOperator.value)
+  }
+  if (filterType.value) {
+    result = result.filter(r => filterType.value === 'manual' ? r.isManual : !r.isManual)
+  }
+  return result
+})
 
-const estimatedExitTime = computed(() =>
-  dayjs().add(5, 'minute').format('YYYY-MM-DD HH:mm')
-)
+const manualReleaseForm = reactive({
+  plateNumber: '',
+  reason: '',
+  laneNo: null as number | null
+})
+
+const manualReleaseRules: FormRules = {
+  plateNumber: [{ required: true, message: '请输入车牌号', trigger: 'blur' }],
+  reason: [{ required: true, message: '请输入放行原因', trigger: 'blur' }],
+  laneNo: [{ required: true, message: '请选择闸道', trigger: 'change' }]
+}
 
 function selectVehicle(row: Appointment) {
   selectedId.value = row.id
-  gateStatus.value = 'closed'
+  selectedLane.value = null
 }
 
-function openGate() {
-  if (!currentAppointment.value) return
-
+function confirmRelease() {
+  if (!currentAppointment.value || !selectedLane.value) return
   ElMessageBox.confirm(
-    `确认开闸放行车辆 ${currentAppointment.value.plateNumber}？`,
+    `确认放行车辆 ${currentAppointment.value.plateNumber}？`,
     '放行确认',
     {
-      confirmButtonText: '确认放行',
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'success'
+    }
+  ).then(() => {
+    store.releaseVehicle(currentAppointment.value!.id)
+    ElMessage.success(`车辆 ${currentAppointment.value!.plateNumber} 已放行`)
+    selectedId.value = ''
+    selectedLane.value = null
+  }).catch(() => {})
+}
+
+function returnToCheck() {
+  if (!currentAppointment.value) return
+  ElMessageBox.confirm(
+    `将车辆 ${currentAppointment.value.plateNumber} 退回箱单核对？`,
+    '退回确认',
+    {
+      confirmButtonText: '确认',
       cancelButtonText: '取消',
       type: 'warning'
     }
   ).then(() => {
-    gateStatus.value = 'open'
-    ElMessage.success('闸道已开启，请车辆通行')
-
-    setTimeout(() => {
-      store.releaseVehicle(currentAppointment.value!.id)
-      ElMessage.success(`车辆 ${currentAppointment.value!.plateNumber} 已成功放行`)
-      gateStatus.value = 'closed'
-      selectedId.value = null
-    }, 2000)
-  }).catch(() => {})
-}
-
-function returnInfo() {
-  if (!currentAppointment.value) return
-
-  ElMessageBox.confirm('确定要退回资料重新进行箱单核对吗？', '退回确认', {
-    confirmButtonText: '确定退回',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
     store.returnToCheck(currentAppointment.value!.id)
-    ElMessage.success('已退回箱单核对环节')
-    selectedId.value = null
+    ElMessage.success(`车辆 ${currentAppointment.value!.plateNumber} 已退回箱单核对`)
+    selectedId.value = ''
   }).catch(() => {})
-}
-
-function printTicket() {
-  if (!currentAppointment.value) return
-  ticketInfo.no = 'T' + Date.now().toString().slice(-8)
-  ticketInfo.plateNumber = currentAppointment.value.plateNumber
-  ticketInfo.driverName = currentAppointment.value.driverName
-  ticketInfo.businessType = currentAppointment.value.businessType === 'import' ? '进口提箱' : '出口还箱'
-  ticketInfo.containerNo = currentAppointment.value.containerNo || '-'
-  ticketInfo.laneNo = currentLane.value
-  ticketInfo.releaseTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
-  ticketInfo.operator = currentUser.value.name
-  ticketInfo.printTime = dayjs().format('YYYY-MM-DD HH:mm:ss')
-  ticketDialog.value = true
-}
-
-async function doPrint() {
-  if (window.electronAPI) {
-    await window.electronAPI.printTicket(ticketInfo)
-  }
-  ElMessage.success('打印任务已发送')
-  ticketDialog.value = false
 }
 
 function confirmManualRelease() {
-  if (!manualForm.plateNumber.trim()) {
-    ElMessage.warning('请输入车牌号')
-    return
-  }
-  if (!manualForm.reason.trim()) {
-    ElMessage.warning('请输入放行原因')
-    return
-  }
-  if (!manualForm.laneNo) {
-    ElMessage.warning('请选择闸道')
-    return
-  }
-
-  ElMessageBox.confirm(
-    `确认手动放行车辆 ${manualForm.plateNumber}？此操作将被记录并可追溯。`,
-    '手动放行确认',
-    {
-      confirmButtonText: '确认放行',
-      cancelButtonText: '取消',
-      type: 'warning'
+  if (!manualReleaseFormRef.value) return
+  manualReleaseFormRef.value.validate((valid) => {
+    if (valid && manualReleaseForm.laneNo) {
+      store.manualRelease(manualReleaseForm.plateNumber, manualReleaseForm.reason, manualReleaseForm.laneNo)
+      ElMessage.success('手动放行完成')
+      manualReleaseDialog.value = false
+      manualReleaseForm.plateNumber = ''
+      manualReleaseForm.reason = ''
+      manualReleaseForm.laneNo = null
     }
-  ).then(() => {
-    store.manualRelease(manualForm.plateNumber, manualForm.reason, manualForm.laneNo)
-    ElMessage.success(`车辆 ${manualForm.plateNumber} 已手动放行，记录已保存`)
-    manualReleaseDialog.value = false
-    manualForm.plateNumber = ''
-    manualForm.reason = ''
-    manualForm.laneNo = 1
-  }).catch(() => {})
+  })
+}
+
+function viewReleaseDetail(record: ReleaseRecord) {
+  currentRelease.value = record
+  detailDialog.value = true
+}
+
+function filterRecords() {}
+
+function resetFilter() {
+  filterPlate.value = ''
+  filterLane.value = null
+  filterOperator.value = ''
+  filterType.value = ''
 }
 </script>
-
-<style scoped>
-.gate-status-card {
-  text-align: center;
-  padding: 30px;
-  border-radius: 12px;
-  transition: all 0.3s;
-}
-
-.gate-status-card.open {
-  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-  color: #fff;
-}
-
-.gate-status-card.closed {
-  background: #f5f7fa;
-  color: #909399;
-}
-
-.gate-status-text {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 10px 0;
-}
-
-.gate-lane {
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.pass-info {
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 20px;
-  height: 100%;
-}
-
-.pass-item {
-  margin-bottom: 14px;
-  font-size: 14px;
-}
-
-.pass-item:last-child {
-  margin-bottom: 0;
-}
-
-.pass-label {
-  color: #909399;
-  display: inline-block;
-  width: 110px;
-}
-
-.pass-value {
-  color: #303133;
-  font-weight: 500;
-}
-
-.action-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-top: 30px;
-}
-
-.ticket-preview {
-  background: #fff;
-  border: 1px dashed #dcdfe6;
-  padding: 20px;
-  border-radius: 8px;
-}
-
-.ticket-title {
-  text-align: center;
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 10px;
-}
-
-.ticket-no {
-  text-align: center;
-  color: #909399;
-  font-size: 12px;
-}
-
-.ticket-info p {
-  margin: 8px 0;
-  font-size: 14px;
-}
-
-.ticket-footer {
-  font-size: 12px;
-  color: #909399;
-}
-</style>

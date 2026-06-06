@@ -3,17 +3,21 @@
     <div class="page-header">
       <div class="page-title">班次统计</div>
       <div class="header-actions">
+        <el-radio-group v-model="selectedShift" size="default" style="margin-right: 16px">
+          <el-radio-button label="all">全部班次</el-radio-button>
+          <el-radio-button label="day">白班</el-radio-button>
+          <el-radio-button label="night">夜班</el-radio-button>
+        </el-radio-group>
         <el-date-picker
-          v-model="selectedDate"
-          type="date"
-          placeholder="选择日期"
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
           value-format="YYYY-MM-DD"
+          style="width: 280px; margin-right: 16px"
         />
-        <el-select v-model="selectedShift" placeholder="选择班次" style="width: 120px; margin-left: 10px">
-          <el-option label="白班" value="day" />
-          <el-option label="夜班" value="night" />
-        </el-select>
-        <el-button type="primary" style="margin-left: 10px" @click="refreshData">
+        <el-button type="primary" @click="refreshData">
           <el-icon><Refresh /></el-icon>
           刷新数据
         </el-button>
@@ -23,37 +27,37 @@
     <el-row :gutter="20">
       <el-col :span="4">
         <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
-          <div class="stat-value">{{ stats.totalAppointments }}</div>
-          <div class="stat-label">总预约数</div>
+          <div class="stat-value">{{ currentStats.totalAppointments }}</div>
+          <div class="stat-label">总预约量</div>
         </div>
       </el-col>
       <el-col :span="4">
         <div class="stat-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%)">
-          <div class="stat-value">{{ stats.passedCount }}</div>
+          <div class="stat-value">{{ currentStats.passedCount }}</div>
           <div class="stat-label">已放行</div>
         </div>
       </el-col>
       <el-col :span="4">
         <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
-          <div class="stat-value">{{ stats.rejectedCount }}</div>
+          <div class="stat-value">{{ currentStats.rejectedCount }}</div>
           <div class="stat-label">已拒绝</div>
         </div>
       </el-col>
       <el-col :span="4">
         <div class="stat-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
-          <div class="stat-value">{{ stats.absentCount }}</div>
+          <div class="stat-value">{{ currentStats.absentCount }}</div>
           <div class="stat-label">爽约数</div>
         </div>
       </el-col>
       <el-col :span="4">
         <div class="stat-card" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)">
-          <div class="stat-value">{{ stats.lateCount }}</div>
+          <div class="stat-value">{{ currentStats.lateCount }}</div>
           <div class="stat-label">迟到数</div>
         </div>
       </el-col>
       <el-col :span="4">
         <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
-          <div class="stat-value">{{ stats.dangerousCount }}</div>
+          <div class="stat-value">{{ currentStats.dangerousCount }}</div>
           <div class="stat-label">危险品</div>
         </div>
       </el-col>
@@ -75,11 +79,11 @@
               </div>
               <div class="congestion-stat">
                 <span class="cs-label">平均等待</span>
-                <span class="cs-value">{{ stats.avgWaitTime }} 分钟</span>
+                <span class="cs-value">{{ currentStats.avgWaitTime }} 分钟</span>
               </div>
               <div class="congestion-stat">
-                <span class="cs-label">平均处理</span>
-                <span class="cs-value">{{ stats.avgProcessTime }} 分钟</span>
+                <span class="cs-label">平均办理</span>
+                <span class="cs-value">{{ currentStats.avgProcessTime }} 分钟</span>
               </div>
             </div>
           </div>
@@ -91,13 +95,13 @@
           <el-descriptions :column="1" border size="default">
             <el-descriptions-item label="平均等待时间">
               <span style="font-size: 24px; font-weight: bold; color: #409eff">
-                {{ stats.avgWaitTime }}
+                {{ currentStats.avgWaitTime }}
               </span>
               <span style="margin-left: 4px">分钟</span>
             </el-descriptions-item>
-            <el-descriptions-item label="平均处理时间">
+            <el-descriptions-item label="平均办理时间">
               <span style="font-size: 24px; font-weight: bold; color: #67c23a">
-                {{ stats.avgProcessTime }}
+                {{ currentStats.avgProcessTime }}
               </span>
               <span style="margin-left: 4px">分钟</span>
             </el-descriptions-item>
@@ -106,9 +110,9 @@
                 {{ passRate }}%
               </span>
             </el-descriptions-item>
-            <el-descriptions-item label="准时率">
-              <span style="font-size: 24px; font-weight: bold; color: #909399">
-                {{ onTimeRate }}%
+            <el-descriptions-item label="异常率">
+              <span style="font-size: 24px; font-weight: bold; color: #f56c6c">
+                {{ exceptionRate }}%
               </span>
             </el-descriptions-item>
           </el-descriptions>
@@ -116,11 +120,11 @@
       </el-col>
       <el-col :span="8">
         <div class="card-section">
-          <div class="section-title">闸道处理统计</div>
-          <el-table :data="laneStats" stripe>
-            <el-table-column prop="name" label="闸道" />
-            <el-table-column prop="processedCount" label="处理数量" />
-            <el-table-column label="处理率">
+          <div class="section-title">各闸道放行量</div>
+          <el-table :data="gateLaneStats" stripe>
+            <el-table-column prop="name" label="闸道" width="100" />
+            <el-table-column prop="processedCount" label="放行量" width="100" align="center" />
+            <el-table-column label="占比">
               <template #default="{ row }">
                 <el-progress :percentage="Math.round(row.processedCount / maxLaneCount * 100)" :stroke-width="10" />
               </template>
@@ -132,15 +136,23 @@
 
     <div class="card-section" style="margin-top: 20px">
       <div class="section-title">
-        车队服务评价
+        车队服务评价排行
         <el-button size="small" style="margin-left: auto" @click="exportReport">
           <el-icon><Download /></el-icon>
           导出评价报表
         </el-button>
       </div>
-      <el-table :data="fleetEvaluations" stripe border>
+      <el-table :data="sortedFleetEvaluations" stripe border>
+        <el-table-column label="排名" width="80" align="center">
+          <template #default="{ $index }">
+            <span v-if="$index === 0" style="color: #f56c6c; font-weight: bold; font-size: 18px">🏆</span>
+            <span v-else-if="$index === 1" style="color: #e6a23c; font-weight: bold; font-size: 18px">🥈</span>
+            <span v-else-if="$index === 2" style="color: #67c23a; font-weight: bold; font-size: 18px">🥉</span>
+            <span v-else style="color: #909399">{{ $index + 1 }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="fleetName" label="车队名称" width="160" />
-        <el-table-column prop="totalVehicles" label="运输车次" width="120" />
+        <el-table-column prop="totalVehicles" label="运输车次" width="120" align="center" />
         <el-table-column label="准点率" width="180">
           <template #default="{ row }">
             <el-progress :percentage="row.onTimeRate" :color="getRateColor(row.onTimeRate)" :stroke-width="12" />
@@ -157,14 +169,14 @@
             <span style="margin-left: 4px; color: #909399">/ 100</span>
           </template>
         </el-table-column>
-        <el-table-column label="评级" width="120">
+        <el-table-column label="评级" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="getLevelType(row.level)" size="large" effect="dark">
               {{ row.level }} 级
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="评价" width="120">
+        <el-table-column label="评价" width="120" align="center">
           <template #default="{ row }">
             <span v-if="row.level === 'A'" style="color: #67c23a">优秀</span>
             <span v-else-if="row.level === 'B'" style="color: #409eff">良好</span>
@@ -175,16 +187,24 @@
       </el-table>
     </div>
 
-    <div class="card-section" v-if="manualReleaseRecords.length > 0">
-      <div class="section-title">手动放行记录</div>
-      <el-table :data="manualReleaseRecords" stripe border>
-        <el-table-column prop="createTime" label="操作时间" width="170" />
-        <el-table-column prop="plateNumber" label="车牌号" width="130" />
-        <el-table-column prop="reason" label="放行原因" min-width="250" show-overflow-tooltip />
-        <el-table-column prop="laneNo" label="闸道" width="80">
+    <div class="card-section" style="margin-top: 20px">
+      <div class="section-title">放行记录明细</div>
+      <el-table :data="releaseRecords" stripe border height="300">
+        <el-table-column prop="releaseTime" label="放行时间" width="170" fixed="left" />
+        <el-table-column prop="plateNumber" label="车牌号" width="120" />
+        <el-table-column label="类型" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.isManual ? 'danger' : 'success'" size="small">
+              {{ row.isManual ? '手动' : '正常' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="laneNo" label="闸道" width="70">
           <template #default="{ row }">{{ row.laneNo }}号</template>
         </el-table-column>
-        <el-table-column prop="operator" label="值班员" width="120" />
+        <el-table-column prop="operator" label="值班员" width="100" />
+        <el-table-column prop="appointmentNo" label="预约号" width="160" show-overflow-tooltip />
+        <el-table-column prop="fleetName" label="车队" width="140" show-overflow-tooltip />
       </el-table>
     </div>
   </div>
@@ -198,43 +218,77 @@ import dayjs from 'dayjs'
 
 const store = useAppStore()
 
-const selectedDate = ref(dayjs().format('YYYY-MM-DD'))
-const selectedShift = ref('day')
+const selectedShift = ref('all')
+const dateRange = ref([
+  dayjs().subtract(7, 'day').format('YYYY-MM-DD'),
+  dayjs().format('YYYY-MM-DD')
+])
 
-const stats = computed(() => ({
-  totalAppointments: store.shiftStats[0]?.totalAppointments || 0,
-  passedCount: store.passedCount,
-  rejectedCount: store.rejectedCount,
-  absentCount: store.absentCount,
-  lateCount: store.lateCount,
-  avgWaitTime: store.shiftStats[0]?.avgWaitTime || 0,
-  avgProcessTime: store.shiftStats[0]?.avgProcessTime || 0,
-  dangerousCount: store.shiftStats[0]?.dangerousCount || 0
-}))
+const filteredShiftStats = computed(() => {
+  let stats = [...store.shiftStats]
+  if (selectedShift.value !== 'all') {
+    stats = stats.filter(s => s.shift === selectedShift.value)
+  }
+  if (dateRange.value && dateRange.value.length === 2) {
+    const [start, end] = dateRange.value
+    stats = stats.filter(s => s.date >= start && s.date <= end)
+  }
+  return stats
+})
+
+const currentStats = computed(() => {
+  const stats = filteredShiftStats.value
+  if (stats.length === 0) {
+    return {
+      totalAppointments: 0,
+      passedCount: 0,
+      rejectedCount: 0,
+      absentCount: 0,
+      lateCount: 0,
+      avgWaitTime: 0,
+      avgProcessTime: 0,
+      dangerousCount: 0
+    }
+  }
+  return {
+    totalAppointments: stats.reduce((sum, s) => sum + s.totalAppointments, 0),
+    passedCount: stats.reduce((sum, s) => sum + s.passedCount, 0),
+    rejectedCount: stats.reduce((sum, s) => sum + s.rejectedCount, 0),
+    absentCount: stats.reduce((sum, s) => sum + s.absentCount, 0),
+    lateCount: stats.reduce((sum, s) => sum + s.lateCount, 0),
+    avgWaitTime: Math.round(stats.reduce((sum, s) => sum + s.avgWaitTime, 0) / stats.length),
+    avgProcessTime: Math.round(stats.reduce((sum, s) => sum + s.avgProcessTime, 0) / stats.length),
+    dangerousCount: stats.reduce((sum, s) => sum + s.dangerousCount, 0)
+  }
+})
 
 const fleetEvaluations = computed(() => store.fleetEvaluations)
-const laneStats = computed(() => store.gateLanes)
-const manualReleaseRecords = computed(() => store.manualReleaseRecords)
+const releaseRecords = computed(() => store.releaseRecords)
+const gateLaneStats = computed(() => store.gateLanes)
+
+const sortedFleetEvaluations = computed(() => {
+  return [...fleetEvaluations.value].sort((a, b) => b.score - a.score)
+})
 
 const waitingCount = computed(() =>
   store.queue.filter(q => q.status === 'waiting').length
 )
 
 const maxLaneCount = computed(() =>
-  Math.max(...laneStats.value.map(l => l.processedCount), 1)
+  Math.max(...gateLaneStats.value.map(l => l.processedCount), 1)
 )
 
 const passRate = computed(() => {
-  const total = stats.value.totalAppointments
+  const total = currentStats.value.totalAppointments
   if (total === 0) return 0
-  return Math.round(stats.value.passedCount / total * 100)
+  return Math.round(currentStats.value.passedCount / total * 100)
 })
 
-const onTimeRate = computed(() => {
-  const total = stats.value.totalAppointments
+const exceptionRate = computed(() => {
+  const total = currentStats.value.totalAppointments
   if (total === 0) return 0
-  const onTime = total - stats.value.lateCount - stats.value.absentCount
-  return Math.round(Math.max(0, onTime) / total * 100)
+  const exceptions = currentStats.value.rejectedCount + currentStats.value.absentCount + currentStats.value.lateCount
+  return Math.round(exceptions / total * 100)
 })
 
 const congestionClass = computed(() => {

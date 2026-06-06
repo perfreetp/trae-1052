@@ -21,6 +21,15 @@ export interface Appointment {
   createTime: string
   remark?: string
   photos: string[]
+  verifyRecords: VerifyRecord[]
+}
+
+export interface VerifyRecord {
+  id: string
+  action: 'verify_pass' | 'verify_reject' | 'photo' | 'mark_dangerous'
+  description: string
+  operator: string
+  createTime: string
 }
 
 export interface QueueItem {
@@ -85,4 +94,18 @@ export interface ManualReleaseRecord {
   laneNo: number
   operator: string
   createTime: string
+}
+
+export interface ReleaseRecord {
+  id: string
+  appointmentNo?: string
+  plateNumber: string
+  laneNo: number
+  operator: string
+  releaseTime: string
+  isManual: boolean
+  reason?: string
+  weight?: number
+  driverName?: string
+  fleetName?: string
 }

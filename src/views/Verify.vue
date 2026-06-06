@@ -167,6 +167,31 @@
               </el-button>
             </div>
           </div>
+
+          <el-divider />
+
+          <div class="section-title" style="margin-top: 0">核验历史记录</div>
+          <el-timeline v-if="currentAppointment.verifyRecords && currentAppointment.verifyRecords.length > 0">
+            <el-timeline-item
+              v-for="record in currentAppointment.verifyRecords"
+              :key="record.id"
+              :timestamp="record.createTime"
+              :type="getTimelineType(record.action)"
+            >
+              <div>
+                <div style="font-weight: 600; color: #303133">
+                  {{ getActionText(record.action) }}
+                </div>
+                <div style="color: #606266; font-size: 13px; margin-top: 4px">
+                  {{ record.description }}
+                </div>
+                <div style="color: #909399; font-size: 12px; margin-top: 4px">
+                  操作人：{{ record.operator }}
+                </div>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="暂无核验记录" :image-size="60" />
         </div>
 
         <el-empty v-else description="请从左侧列表选择待核验车辆" :image-size="120" style="margin-top: 100px">
@@ -289,8 +314,29 @@ function markDangerous() {
       isDangerous: true,
       dangerousInfo: value || '危险品'
     })
+    store.addVerifyRecord(currentAppointment.value!.id, 'mark_dangerous', `标记为危险品：${value || '危险品'}`)
     ElMessage.success('已标记为危险品车辆')
   }).catch(() => {})
+}
+
+function getTimelineType(action: string) {
+  const map: Record<string, any> = {
+    'verify_pass': 'success',
+    'verify_reject': 'danger',
+    'photo': 'primary',
+    'mark_dangerous': 'warning'
+  }
+  return map[action] || 'primary'
+}
+
+function getActionText(action: string) {
+  const map: Record<string, string> = {
+    'verify_pass': '核验通过',
+    'verify_reject': '核验拒绝',
+    'photo': '拍照留存',
+    'mark_dangerous': '标记危险品'
+  }
+  return map[action] || action
 }
 </script>
 
