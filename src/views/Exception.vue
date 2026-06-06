@@ -48,10 +48,13 @@
           <el-radio-button label="equipment_fault">设备故障</el-radio-button>
           <el-radio-button label="other">其他</el-radio-button>
         </el-radio-group>
+        <span style="margin-left: 16px; color: #909399; font-size: 13px">
+          共 {{ filteredRecords.length }} 条记录
+        </span>
       </div>
 
       <el-table :data="filteredRecords" stripe border height="500">
-        <el-table-column prop="createTime" label="记录时间" width="170" />
+        <el-table-column prop="createTime" label="记录时间" width="170" fixed="left" />
         <el-table-column prop="plateNumber" label="车牌号" width="120" />
         <el-table-column prop="appointmentNo" label="预约号" width="160" />
         <el-table-column label="异常类型" width="120">
@@ -107,12 +110,54 @@
           <el-input v-model="exceptionForm.action" type="textarea" :rows="2" placeholder="请输入处理措施（选填）" />
         </el-form-item>
         <el-form-item label="处理人">
-          <el-tag>{{ currentUser.name }}</el-tag>
+          <el-tag type="info">{{ currentUser.name }}</el-tag>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="addExceptionDialog = false">取消</el-button>
         <el-button type="primary" @click="saveException">保存记录</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="detailDialog" title="异常记录详情" width="550px">
+      <el-descriptions v-if="currentRecord" :column="1" border size="default">
+        <el-descriptions-item label="记录时间">
+          {{ currentRecord.createTime }}
+        </el-descriptions-item>
+        <el-descriptions-item label="车牌号">
+          <el-tag type="primary">{{ currentRecord.plateNumber }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="预约号">
+          {{ currentRecord.appointmentNo || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="异常类型">
+          <el-tag :type="getExceptionTypeColor(currentRecord.type)">
+            {{ getExceptionTypeText(currentRecord.type) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="异常描述">
+          <div style="white-space: pre-wrap; color: #606266">{{ currentRecord.description }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item label="处理措施">
+          <div style="white-space: pre-wrap; color: #606266">{{ currentRecord.action || '暂无' }}</div>
+        </el-descriptions-item>
+        <el-descriptions-item label="处理人">
+          {{ currentRecord.handler }}
+        </el-descriptions-item>
+        <el-descriptions-item label="处理状态">
+          <el-tag :type="currentRecord.processed ? 'success' : 'warning'">
+            {{ currentRecord.processed ? '已处理' : '待处理' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="currentRecord.processedTime" label="处理时间">
+          {{ currentRecord.processedTime }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialog = false">关闭</el-button>
+        <el-button v-if="currentRecord && !currentRecord.processed" type="primary" @click="processFromDetail">
+          标记为已处理
+        </el-button>
       </template>
     </el-dialog>
 
@@ -129,7 +174,7 @@
         <el-form-item label="异常描述">
           <div style="color: #606266">{{ currentRecord?.description }}</div>
         </el-form-item>
-        <el-form-item label="处理措施">
+        <el-form-item label="处理措施" required>
           <el-input v-model="processAction" type="textarea" :rows="3" placeholder="请输入处理措施" />
         </el-form-item>
       </el-form>
@@ -150,6 +195,7 @@ import type { ExceptionRecord } from '@/types'
 const store = useAppStore()
 
 const addExceptionDialog = ref(false)
+const detailDialog = ref(false)
 const processDialog = ref(false)
 const filterType = ref('all')
 const currentRecord = ref<ExceptionRecord | null>(null)
@@ -228,6 +274,18 @@ function saveException() {
   })
 }
 
+function viewRecordDetail(record: ExceptionRecord) {
+  currentRecord.value = record
+  detailDialog.value = true
+}
+
+function processFromDetail() {
+  if (currentRecord.value) {
+    detailDialog.value = false
+    processRecord(currentRecord.value)
+  }
+}
+
 function processRecord(record: ExceptionRecord) {
   currentRecord.value = record
   processAction.value = record.action || ''
@@ -241,27 +299,12 @@ function confirmProcess() {
     return
   }
   store.processExceptionRecord(currentRecord.value.id, processAction.value)
-  ElMessage.success('异常已处理')
+  ElMessage.success('异常已标记为已处理')
   processDialog.value = false
+  if (detailDialog.value) {
+    detailDialog.value = false
+  }
   currentRecord.value = null
   processAction.value = ''
-}
-
-function viewRecordDetail(record: ExceptionRecord) {
-  ElMessageBox.alert(
-    `
-    <p><strong>记录时间：</strong>${record.createTime}</p>
-    <p><strong>车牌号：</strong>${record.plateNumber}</p>
-    <p><strong>预约号：</strong>${record.appointmentNo || '-'}</p>
-    <p><strong>异常类型：</strong>${getExceptionTypeText(record.type)}</p>
-    <p><strong>异常描述：</strong>${record.description}</p>
-    <p><strong>处理措施：</strong>${record.action || '-'}</p>
-    <p><strong>处理人：</strong>${record.handler}</p>
-    <p><strong>状态：</strong>${record.processed ? '已处理' : '待处理'}</p>
-    <p v-if="record.processedTime"><strong>处理时间：</strong>${record.processedTime}</p>
-    `,
-    '异常记录详情',
-    { dangerouslyUseHTMLString: true, confirmButtonText: '关闭' }
-  )
 }
 </script>

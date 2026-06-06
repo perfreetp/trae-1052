@@ -38,11 +38,14 @@
 
         <div class="card-section" v-if="manualReleaseRecords.length > 0">
           <div class="section-title">手动放行记录</div>
-          <el-table :data="manualReleaseRecords" size="small" stripe>
-            <el-table-column prop="plateNumber" label="车牌号" width="110" />
-            <el-table-column prop="laneNo" label="闸道" width="60" />
+          <el-table :data="manualReleaseRecords" size="small" stripe border height="200">
+            <el-table-column prop="createTime" label="操作时间" width="160" />
+            <el-table-column prop="plateNumber" label="车牌号" width="100" />
+            <el-table-column prop="reason" label="放行原因" min-width="150" show-overflow-tooltip />
+            <el-table-column prop="laneNo" label="闸道" width="60">
+              <template #default="{ row }">{{ row.laneNo }}号</template>
+            </el-table-column>
             <el-table-column prop="operator" label="值班员" width="90" />
-            <el-table-column prop="createTime" label="时间" show-overflow-tooltip />
           </el-table>
         </div>
       </el-col>

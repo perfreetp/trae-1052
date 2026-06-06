@@ -7,6 +7,8 @@ import {
   mockGateLanes,
   mockShiftStats,
   mockFleetEvaluations,
+  mockExceptionRecords,
+  mockManualReleaseRecords,
   generateId,
   generateAppointmentNo,
   generateQueueNo
@@ -19,8 +21,8 @@ export const useAppStore = defineStore('app', () => {
   const gateLanes = ref<GateLane[]>([...mockGateLanes])
   const shiftStats = ref<ShiftStats[]>([...mockShiftStats])
   const fleetEvaluations = ref<FleetEvaluation[]>([...mockFleetEvaluations])
-  const exceptionRecords = ref<ExceptionRecord[]>([])
-  const manualReleaseRecords = ref<ManualReleaseRecord[]>([])
+  const exceptionRecords = ref<ExceptionRecord[]>([...mockExceptionRecords])
+  const manualReleaseRecords = ref<ManualReleaseRecord[]>([...mockManualReleaseRecords])
   const currentUser = ref({ name: '张值班员', role: 'gate_operator', shift: '白班' })
 
   const pendingAppointments = computed(() =>

@@ -1,4 +1,4 @@
-import type { Appointment, QueueItem, GateLane, ShiftStats, FleetEvaluation } from '@/types'
+import type { Appointment, QueueItem, GateLane, ShiftStats, FleetEvaluation, ExceptionRecord, ManualReleaseRecord } from '@/types'
 import dayjs from 'dayjs'
 
 function generateId(): string {
@@ -122,6 +122,27 @@ export const mockAppointments: Appointment[] = [
   {
     id: generateId(),
     appointmentNo: generateAppointmentNo(),
+    plateNumber: '辽M88990',
+    vehicleType: '集装箱货车',
+    driverName: '郑十',
+    driverLicense: '210101199007077890',
+    driverPhone: '13300133007',
+    fleetName: '中远海运',
+    businessType: 'import',
+    containerNo: 'MSKU8899001',
+    containerSize: '40HQ',
+    appointmentTime: dayjs().subtract(15, 'minute').format('YYYY-MM-DD HH:mm'),
+    status: 'passing',
+    queueNo: 'A006',
+    isDangerous: false,
+    weight: 26800,
+    checkInTime: dayjs().subtract(10, 'minute').format('YYYY-MM-DD HH:mm:ss'),
+    createTime: dayjs().subtract(1, 'hour').format('YYYY-MM-DD HH:mm:ss'),
+    photos: []
+  },
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
     plateNumber: '浙F54321',
     vehicleType: '集装箱货车',
     driverName: '孙八',
@@ -137,6 +158,63 @@ export const mockAppointments: Appointment[] = [
     createTime: dayjs().subtract(3, 'hour').format('YYYY-MM-DD HH:mm:ss'),
     photos: [],
     remark: '未按时到场'
+  }
+]
+
+export const mockExceptionRecords: ExceptionRecord[] = [
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '鲁G11223',
+    type: 'late',
+    description: '预约时间14:00，实际15:30到场，迟到1小时30分钟',
+    action: '已登记迟到，重新安排排队',
+    handler: '张值班员',
+    createTime: dayjs().subtract(1, 'hour').format('YYYY-MM-DD HH:mm:ss'),
+    processed: true,
+    processedTime: dayjs().subtract(50, 'minute').format('YYYY-MM-DD HH:mm:ss')
+  },
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '闽H44556',
+    type: 'document_mismatch',
+    description: '司机驾驶证与预约登记信息不符，登记姓名为"周九"，实际持证人为"吴十"',
+    action: '已退回，要求司机提供正确证件',
+    handler: '张值班员',
+    createTime: dayjs().subtract(2, 'hour').format('YYYY-MM-DD HH:mm:ss'),
+    processed: true,
+    processedTime: dayjs().subtract(1, 'hour').format('YYYY-MM-DD HH:mm:ss')
+  },
+  {
+    id: generateId(),
+    appointmentNo: generateAppointmentNo(),
+    plateNumber: '浙F54321',
+    type: 'absent',
+    description: '预约时间12:00，截至14:30仍未到场，电话联系不上司机',
+    action: '',
+    handler: '张值班员',
+    createTime: dayjs().subtract(3, 'hour').format('YYYY-MM-DD HH:mm:ss'),
+    processed: false
+  }
+]
+
+export const mockManualReleaseRecords: ManualReleaseRecord[] = [
+  {
+    id: generateId(),
+    plateNumber: '皖J77889',
+    reason: '紧急物资运输，已获得港务部门特批，优先放行',
+    laneNo: 3,
+    operator: '张值班员',
+    createTime: dayjs().subtract(30, 'minute').format('YYYY-MM-DD HH:mm:ss')
+  },
+  {
+    id: generateId(),
+    plateNumber: '冀K66554',
+    reason: '系统故障导致排队信息丢失，根据纸质预约单人工核实后放行',
+    laneNo: 1,
+    operator: '李值班员',
+    createTime: dayjs().subtract(2, 'hour').format('YYYY-MM-DD HH:mm:ss')
   }
 ]
 

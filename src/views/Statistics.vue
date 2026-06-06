@@ -177,11 +177,13 @@
 
     <div class="card-section" v-if="manualReleaseRecords.length > 0">
       <div class="section-title">手动放行记录</div>
-      <el-table :data="manualReleaseRecords" stripe>
-        <el-table-column prop="createTime" label="时间" width="170" />
+      <el-table :data="manualReleaseRecords" stripe border>
+        <el-table-column prop="createTime" label="操作时间" width="170" />
         <el-table-column prop="plateNumber" label="车牌号" width="130" />
-        <el-table-column prop="reason" label="放行原因" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="laneNo" label="闸道" width="80" />
+        <el-table-column prop="reason" label="放行原因" min-width="250" show-overflow-tooltip />
+        <el-table-column prop="laneNo" label="闸道" width="80">
+          <template #default="{ row }">{{ row.laneNo }}号</template>
+        </el-table-column>
         <el-table-column prop="operator" label="值班员" width="120" />
       </el-table>
     </div>
@@ -189,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, markRaw } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAppStore } from '@/stores/app'
 import dayjs from 'dayjs'
